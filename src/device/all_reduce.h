@@ -20,7 +20,10 @@ namespace {
     ssize_t gridOffset;
     ssize_t channelCount;
     ssize_t chunkCount;
-    ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), (ssize_t*)nullptr, &gridOffset, &channelCount, &chunkCount);
+    // HANS: Needs the work size
+    // ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), (ssize_t*)nullptr, &gridOffset, &channelCount, &chunkCount);
+    ssize_t size;
+    ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), &size, &gridOffset, &channelCount, &chunkCount);
     const ssize_t loopCount = nranks * chunkCount;
     ssize_t offset;
     int nelem;
@@ -48,11 +51,23 @@ namespace {
     const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
+    // HANS: Decide shift offset for Random SkipReduce
+    const uint shift = ((int)(random * nranks)) % nranks;
+
     // HANS: Decide how many steps to skip this iteration
     uint skip_rs;
+    if (size < min_size){
+      skip_rs = 0;
+    } else {
+      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4)){
+        skip_rs = 0;
+      } else {
+        skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
+      }
+    }
 
+    const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
     
-
     // Coverity reports that the callee treats &ring->next as an array.  However, due to the use of
     // FanSymmetric<1>, only the first element is ever accessed, so it's fine.
     // coverity[callee_ptr_arith:FALSE]
@@ -69,20 +84,25 @@ namespace {
         return r - (r >= nranks ? nranks : 0);
       };
 
-      // step 0: push data to next GPU
-      chunk = modRanks(ringIx + nranks - 1);
-      chunkOffset = chunk * chunkCount;
-      offset = gridOffset + elemOffset + chunkOffset;
-      nelem = (int)min(chunkCount, remCount - chunkOffset);
-      prims.directSend(offset, offset, nelem);
+      // HANS: Shifting (Random SkipReduce)
+      ringIx = modRanks(ringIx + shift);
 
-      // k-2 steps: reduce and copy to next GPU
-      for (int j = 2; j < nranks; ++j) {
-        chunk = modRanks(ringIx + nranks - j);
+      if (!no_rs){
+        // step 0: push data to next GPU
+        chunk = modRanks(ringIx + nranks - (1 + skip_rs));
         chunkOffset = chunk * chunkCount;
         offset = gridOffset + elemOffset + chunkOffset;
         nelem = (int)min(chunkCount, remCount - chunkOffset);
-        prims.directRecvReduceDirectSend(offset, offset, nelem);
+        prims.directSend(offset, offset, nelem);
+
+        // k-2 steps: reduce and copy to next GPU
+        for (int j = (2+skip_rs); j < nranks; ++j) {
+          chunk = modRanks(ringIx + nranks - j);
+          chunkOffset = chunk * chunkCount;
+          offset = gridOffset + elemOffset + chunkOffset;
+          nelem = (int)min(chunkCount, remCount - chunkOffset);
+          prims.directRecvReduceDirectSend(offset, offset, nelem);
+        }
       }
 
       // step k-1: reduce this buffer and data, which will produce the final

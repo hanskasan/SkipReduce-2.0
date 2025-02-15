@@ -327,6 +327,12 @@ __device__ __forceinline__ void ncclKernelMain(struct ncclDevKernelArgs const* a
     int n = __popcll(args->channelMask & ((1ull<<tid)-1));
     if (blockIdx.x == n) ncclShmem.channelId = tid;
   }
+
+  // HANS: Increment counter
+  if (tid == 0){
+    comm->iteration[blockIdx.x] += 1;
+  }
+
   __syncthreads(); // publish ncclShmem.{args, channelId}
   /* set abort flag to 0 */
   if (tid == 0) ncclShmem.aborted = 0;

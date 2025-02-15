@@ -396,6 +396,16 @@ struct ncclDevComm {
   // Channels, device side
   struct ncclDevChannel* channels/*[MAXCHANNELS]*/;
   int* rankToLocalRank;
+
+  // HANS: Additionals
+  uint8_t min_skip_rs;
+  uint8_t max_skip_rs;
+  uint64_t protect_size_0;
+  uint64_t protect_size_1;
+  uint64_t protect_size_2;
+  uint64_t protect_size_3;
+  uint64_t protect_size_4;
+  uint64_t iteration[MAXCHANNELS];
 };
 
 struct alignas(16) ncclDevCommAndChannels {
