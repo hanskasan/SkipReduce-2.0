@@ -479,7 +479,7 @@ static ncclResult_t devCommSetup(ncclComm_t comm) {
   tmpCommAndChans.comm.protect_size_3 = ncclParamProtectSize3();
   tmpCommAndChans.comm.protect_size_4 = ncclParamProtectSize4();
 
-  printf("Selective random skipping from %d to %d steps, but protect bucket with sizes %d %d %d %d %d", tmpCommAndChans.comm.min_skip_rs, tmpCommAndChans.comm.max_skip_rs, tmpCommAndChans.comm.protect_size_0, tmpCommAndChans.comm.protect_size_1, tmpCommAndChans.comm.protect_size_2, tmpCommAndChans.comm.protect_size_3, tmpCommAndChans.comm.protect_size_4);
+  printf("Selective random skipping from %d to %d steps, but protect bucket with sizes %d %d %d %d %d\n", tmpCommAndChans.comm.min_skip_rs, tmpCommAndChans.comm.max_skip_rs, tmpCommAndChans.comm.protect_size_0, tmpCommAndChans.comm.protect_size_1, tmpCommAndChans.comm.protect_size_2, tmpCommAndChans.comm.protect_size_3, tmpCommAndChans.comm.protect_size_4);
 
   comm->workArgsBytes = std::min<size_t>(ncclParamWorkArgsBytes(), ncclMaxKernelArgsSize(comm->cudaArch));
 
