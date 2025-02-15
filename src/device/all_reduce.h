@@ -112,7 +112,10 @@ namespace {
       chunkOffset = chunk * chunkCount;
       offset = gridOffset + elemOffset + chunkOffset;
       nelem = (int)min(chunkCount, remCount - chunkOffset);
-      prims.directRecvReduceCopyDirectSend(offset, offset, nelem, /*postOp=*/true);
+      if (no_rs)
+        prims.directSend(offset, offset, nelem);
+      else
+        prims.directRecvReduceCopyDirectSend(offset, offset, nelem, /*postOp=*/true);
 
       // k-2 steps: copy to next GPU
       for (int j = 1; j < nranks - 1; ++j) {
