@@ -400,12 +400,12 @@ struct ncclDevComm {
   // HANS: Additionals
   uint8_t min_skip_rs;
   uint8_t max_skip_rs;
-  uint64_t protect_size_0;
-  uint64_t protect_size_1;
-  uint64_t protect_size_2;
-  uint64_t protect_size_3;
-  uint64_t protect_size_4;
-  uint64_t iteration[MAXCHANNELS];
+  uint32_t protect_size_0;
+  uint32_t protect_size_1;
+  uint32_t protect_size_2;
+  uint32_t protect_size_3;
+  uint32_t protect_size_4;
+  uint32_t iteration[MAXCHANNELS];
 };
 
 struct alignas(16) ncclDevCommAndChannels {

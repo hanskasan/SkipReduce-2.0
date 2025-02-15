@@ -330,7 +330,7 @@ __device__ __forceinline__ void ncclKernelMain(struct ncclDevKernelArgs const* a
 
   // HANS: Increment counter
   if (tid == 0){
-    comm->iteration[blockIdx.x] += 1;
+    ncclShmem.comm.iteration[blockIdx.x] += 1;
   }
 
   __syncthreads(); // publish ncclShmem.{args, channelId}

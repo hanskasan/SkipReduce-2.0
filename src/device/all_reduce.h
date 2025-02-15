@@ -23,6 +23,7 @@ namespace {
     // HANS: Needs the work size
     // ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), (ssize_t*)nullptr, &gridOffset, &channelCount, &chunkCount);
     ssize_t size;
+    const int bid = ncclShmem.channelId - work->channelLo;
     ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), &size, &gridOffset, &channelCount, &chunkCount);
     const ssize_t loopCount = nranks * chunkCount;
     ssize_t offset;
