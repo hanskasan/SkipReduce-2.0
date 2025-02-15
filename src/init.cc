@@ -430,6 +430,15 @@ static ncclResult_t commAlloc(struct ncclComm* comm, struct ncclComm* parent, in
   return ncclSuccess;
 }
 
+// HANS: Additional environment variables
+NCCL_PARAM(MinSkipRS, "MIN_SKIP_RS", 0);
+NCCL_PARAM(MaxSkipRS, "MAX_SKIP_RS", 0);
+NCCL_PARAM(ProtectSize0, "PROTECT_SIZE_0", 0);
+NCCL_PARAM(ProtectSize1, "PROTECT_SIZE_1", 0);
+NCCL_PARAM(ProtectSize2, "PROTECT_SIZE_2", 0);
+NCCL_PARAM(ProtectSize3, "PROTECT_SIZE_3", 0);
+NCCL_PARAM(ProtectSize4, "PROTECT_SIZE_4", 0);
+
 static ncclResult_t devCommSetup(ncclComm_t comm) {
   ncclResult_t ret = ncclSuccess;
   int nRanks = comm->nRanks;
@@ -456,6 +465,19 @@ static ncclResult_t devCommSetup(ncclComm_t comm) {
   }
   tmpCommAndChans.comm.p2pChunkSize = comm->p2pChunkSize;
   tmpCommAndChans.comm.channels = &devCommAndChans->channels[0];
+
+  // HANS: Additionals
+  for (int iter = 0; iter < MAXCHANNELS; iter++){
+    // tmpCommAndChans.comm.shift[iter] = 0;
+    tmpCommAndChans.comm.iteration[iter] = 0;
+  }
+  tmpCommAndChans.comm.min_skip_rs = ncclParamMinSkipRS();
+  tmpCommAndChans.comm.max_skip_rs = ncclParamMaxSkipRS();
+  tmpCommAndChans.comm.protect_size_0 = ncclParamProtectSize0();
+  tmpCommAndChans.comm.protect_size_1 = ncclParamProtectSize1();
+  tmpCommAndChans.comm.protect_size_2 = ncclParamProtectSize2();
+  tmpCommAndChans.comm.protect_size_3 = ncclParamProtectSize3();
+  tmpCommAndChans.comm.protect_size_4 = ncclParamProtectSize4();
 
   comm->workArgsBytes = std::min<size_t>(ncclParamWorkArgsBytes(), ncclMaxKernelArgsSize(comm->cudaArch));
 

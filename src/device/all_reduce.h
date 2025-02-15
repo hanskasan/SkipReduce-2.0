@@ -8,6 +8,9 @@
 #include "collectives.h"
 #include "primitives.h"
 
+// HANS: Additional libraries
+#include <curand_kernel.h>
+
 namespace {
   template<typename T, typename RedOp, typename Proto>
   __device__ __forceinline__ void runRing(int tid, int nthreads, struct ncclDevWorkColl* work) {
@@ -22,6 +25,33 @@ namespace {
     ssize_t offset;
     int nelem;
     int chunk;
+
+    // HANS: Simple hack not to drop control signal
+    const ssize_t min_size = 100000;
+
+    // HANS: Skipping range
+    const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
+    const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
+
+    // HANS: Randomizer
+    const uint64_t iteration = ncclShmem.comm.iteration[bid];
+    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+
+    curandState s;
+    curand_init(seed, 0, 0, &s);
+    float random = curand_uniform(&s);
+
+    // HANS: Define what to protect
+    const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
+    const uint64_t protect_size_1 = ncclShmem.comm.protect_size_1;
+    const uint64_t protect_size_2 = ncclShmem.comm.protect_size_2;
+    const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
+    const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
+
+    // HANS: Decide how many steps to skip this iteration
+    uint skip_rs;
+
+    
 
     // Coverity reports that the callee treats &ring->next as an array.  However, due to the use of
     // FanSymmetric<1>, only the first element is ever accessed, so it's fine.
