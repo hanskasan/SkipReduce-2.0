@@ -8,6 +8,9 @@
 #include "collectives.h"
 #include "primitives.h"
 
+// HANS: Additional libraries
+#include <curand_kernel.h>
+
 namespace {
   template<typename T, typename RedOp, typename Proto>
   __device__ __forceinline__ void runRing(int tid, int nthreads, struct ncclDevWorkColl* work) {
@@ -24,6 +27,51 @@ namespace {
     uint32_t nelem;
     int rankDest;
 
+    // HANS: Simple hack not to drop control signal
+    const ssize_t min_size = 100000;
+
+    // HANS: Skipping range
+    const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
+    const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
+
+    // HANS: Randomizer
+    const int bid = ncclShmem.channelId - work->channelLo;
+    const uint64_t iteration = ncclShmem.comm.iteration[bid];
+    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+
+    curandState s;
+    curand_init(seed, 0, 0, &s);
+    float random = curand_uniform(&s);
+
+    // HANS: Define what to protect
+    const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
+    const uint64_t protect_size_1 = ncclShmem.comm.protect_size_1;
+    const uint64_t protect_size_2 = ncclShmem.comm.protect_size_2;
+    const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
+    const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
+
+    // HANS: Decide shift offset for Random SkipReduce
+    const uint shift = ((int)(random * nranks)) % nranks;
+
+    // HANS: Decide how many steps to skip this iteration
+    uint skip_rs;
+    if (size < min_size){
+      skip_rs = 0;
+    } else {
+      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4)){
+        skip_rs = 0;
+      } else {
+        skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
+      }
+    }
+
+    const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
+
+    // HANS: For shifting (Random SkipReduce)
+    auto modRanks = [&]__device__(int r)->int {
+      return r - (r >= nranks ? nranks : 0);
+    };
+
     // Coverity reports that the callee treats &ring->next as an array.  However, due to the use of
     // FanSymmetric<1>, only the first element is ever accessed, so it's fine.
     // coverity[callee_ptr_arith:FALSE]
@@ -35,22 +83,24 @@ namespace {
 
       dataOffset = gridOffset + elemOffset;
       /////////////// begin ReduceScatter steps ///////////////
-      // step 0: push data to next GPU
-      rankDest = ringRanks[nranks-1];
-      offset = dataOffset + rankDest * count;
-      prims.send(offset, nelem);
+      if (no_rs){
+        // step 0: push data to next GPU
+        rankDest = ringRanks[nranks-(1+skip_rs)];
+        offset = dataOffset + modRanks(rankDest + shift) * count;
+        prims.send(offset, nelem);
 
-      // k-2 steps: reduce and copy to next GPU
-      for (int j=2; j<nranks; ++j) {
-        rankDest = ringRanks[nranks-j];
-        offset = dataOffset + rankDest * count;
-        prims.recvReduceSend(offset, nelem);
+        // k-2 steps: reduce and copy to next GPU
+        for (int j=(2+skip_rs); j<nranks; ++j) {
+          rankDest = ringRanks[nranks-j];
+          offset = dataOffset + modRanks(rankDest + shift) * count;
+          prims.recvReduceSend(offset, nelem);
+        }
+
+        // step k-1: reduce this buffer and data, which will produce the final result
+        rankDest = ringRanks[0];
+        offset = dataOffset + modRanks(rankDest + shift) * count;
+        prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
       }
-
-      // step k-1: reduce this buffer and data, which will produce the final result
-      rankDest = ringRanks[0];
-      offset = dataOffset + rankDest * count;
-      prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
     }
   }
 }
