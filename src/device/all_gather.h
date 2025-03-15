@@ -8,6 +8,9 @@
 #include "collectives.h"
 #include "primitives.h"
 
+// HANS: Additional libraries
+#include <curand_kernel.h>
+
 namespace {
   template<typename T, typename RedOp, typename Proto, bool isNetOffload = false>
   __device__ __forceinline__ void runRing(int tid, int nthreads, struct ncclDevWorkColl* work) {
@@ -23,6 +26,55 @@ namespace {
     int workNthreads;
     T *inputBuf = (T*)work->sendbuff;
     T *outputBuf = (T*)work->recvbuff;
+
+    // HANS: Simple hack not to drop control signal
+    const ssize_t min_size = 100000;
+
+    // HANS: Skipping range
+    // const uint8_t min_skip_ag = ncclShmem.comm.min_skip_ag;
+    // const uint8_t max_skip_ag = ncclShmem.comm.max_skip_ag;
+    const uint8_t min_skip_ag = ncclShmem.comm.min_skip_rs;
+    const uint8_t max_skip_ag = ncclShmem.comm.max_skip_rs;
+
+    // HANS: Randomizer
+    const int bid = ncclShmem.channelId - work->channelLo;
+    const uint64_t iteration = ncclShmem.comm.iteration[bid];
+    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+
+    curandState s;
+    curand_init(seed, 0, 0, &s);
+    float random = curand_uniform(&s);
+
+    // HANS: Define what to protect
+    const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
+    const uint64_t protect_size_1 = ncclShmem.comm.protect_size_1;
+    const uint64_t protect_size_2 = ncclShmem.comm.protect_size_2;
+    const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
+    const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
+
+    // HANS: Decide shift offset for Random SkipReduce
+    // const uint shift = ((int)(random * nranks)) % nranks;
+    const uint shift = 0;
+
+    // HANS: Decide how many steps to skip this iteration
+    uint skip_ag;
+    if (count < min_size){
+      skip_ag = 0;
+    } else {
+      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
+        skip_ag = 0;
+      } else {
+        skip_ag =  min_skip_ag + ((int)(random * (max_skip_ag - min_skip_ag + 1)));
+      }
+    }
+
+    // HANS: Not used for now
+    const bool no_ag = (skip_ag >= (nranks - 1)) ? true : false;
+
+    // HANS: For shifting (Random SkipReduce)
+    auto modRanks = [&]__device__(int r)->int {
+      return r - (r >= nranks ? nranks : 0);
+    };
 
     // If isNetOffload == true, we only use 1 warp to drive Ring algo/network communication
     // and the rest of warps proceed to copy src data into dst buffer in parallel when AG
@@ -45,29 +97,31 @@ namespace {
         nelem = min(chunkCount, partCount - elemOffset);
         dataOffset = partOffset + elemOffset;
 
-        // step 0: push data to next GPU
-        rankDest = ringRanks[0];
-        offset = dataOffset + rankDest * count;
+        if (!no_ag){
+          // step 0: push data to next GPU
+          rankDest = ringRanks[0+skip_ag];
+          offset = dataOffset + modRanks(rankDest + shift) * count;
 
-        if ((inputBuf + dataOffset == outputBuf + offset) || isNetOffload) { // In place or onePPN
-          prims.directSend(dataOffset, offset, nelem);
-        } else {
-          prims.directCopySend(dataOffset, offset, nelem);
-        }
+          if ((inputBuf + dataOffset == outputBuf + offset) || isNetOffload) { // In place or onePPN
+            prims.directSend(dataOffset, offset, nelem);
+          } else {
+            prims.directCopySend(dataOffset, offset, nelem);
+          }
 
-        // k-2 steps: copy to next GPU
-        for (int j = 1; j < nranks - 1; ++j) {
-          rankDest = ringRanks[nranks - j];
+          // k-2 steps: copy to next GPU
+          for (int j = (1+skip_ag); j < nranks - 1; ++j) {
+            rankDest = ringRanks[nranks - j];
+            offset = dataOffset + modRanks(rankDest + shift) * count;
+            prims.directRecvCopyDirectSend(offset, offset, nelem);
+          }
+
+          // Make final copy from buffer to dest.
+          rankDest = ringRanks[1];
           offset = dataOffset + rankDest * count;
-          prims.directRecvCopyDirectSend(offset, offset, nelem);
+
+          // Final wait/copy.
+          prims.directRecv(offset, offset, nelem);
         }
-
-        // Make final copy from buffer to dest.
-        rankDest = ringRanks[1];
-        offset = dataOffset + rankDest * count;
-
-        // Final wait/copy.
-        prims.directRecv(offset, offset, nelem);
       }
     } else if (inputBuf != outputBuf + ringRanks[0] * count) {
       inputBuf = inputBuf + partOffset;

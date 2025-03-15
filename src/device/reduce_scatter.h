@@ -51,14 +51,15 @@ namespace {
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
     // HANS: Decide shift offset for Random SkipReduce
-    const uint shift = ((int)(random * nranks)) % nranks;
+    // const uint shift = ((int)(random * nranks)) % nranks;
+    const uint shift = 0;
 
     // HANS: Decide how many steps to skip this iteration
     uint skip_rs;
-    if (size < min_size){
+    if (count < min_size){
       skip_rs = 0;
     } else {
-      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4)){
+      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
         skip_rs = 0;
       } else {
         skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
@@ -83,7 +84,7 @@ namespace {
 
       dataOffset = gridOffset + elemOffset;
       /////////////// begin ReduceScatter steps ///////////////
-      if (no_rs){
+      if (!no_rs){
         // step 0: push data to next GPU
         rankDest = ringRanks[nranks-(1+skip_rs)];
         offset = dataOffset + modRanks(rankDest + shift) * count;
