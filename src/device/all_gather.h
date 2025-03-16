@@ -99,7 +99,8 @@ namespace {
 
         if (!no_ag){
           // step 0: push data to next GPU
-          rankDest = ringRanks[0+skip_ag];
+          rankDest = ringRanks[0];
+          // rankDest = ringRanks[modRanks(nranks-skip_ag)];
           offset = dataOffset + modRanks(rankDest + shift) * count;
 
           if ((inputBuf + dataOffset == outputBuf + offset) || isNetOffload) { // In place or onePPN
@@ -109,14 +110,14 @@ namespace {
           }
 
           // k-2 steps: copy to next GPU
-          for (int j = (1+skip_ag); j < nranks - 1; ++j) {
+          for (int j = 1; j < nranks - 1 - skip_ag; ++j) {
             rankDest = ringRanks[nranks - j];
             offset = dataOffset + modRanks(rankDest + shift) * count;
             prims.directRecvCopyDirectSend(offset, offset, nelem);
           }
 
           // Make final copy from buffer to dest.
-          rankDest = ringRanks[1];
+          rankDest = ringRanks[1+skip_ag];
           offset = dataOffset + rankDest * count;
 
           // Final wait/copy.
