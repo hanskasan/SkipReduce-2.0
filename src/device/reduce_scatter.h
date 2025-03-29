@@ -27,12 +27,15 @@ namespace {
     uint32_t nelem;
     int rankDest;
 
+    // HANS: Additionals for SkipReduce
+    uint skip_rs = work->skips;
+
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
 
     // HANS: Skipping range
-    const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
-    const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
+    // const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
+    // const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
 
     // HANS: Randomizer
     const int bid = ncclShmem.channelId - work->channelLo;
@@ -55,15 +58,14 @@ namespace {
     const uint shift = 0;
 
     // HANS: Decide how many steps to skip this iteration
-    uint skip_rs;
     if (count < min_size){
       skip_rs = 0;
     } else {
-      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
+      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4))
         skip_rs = 0;
-      } else {
-        skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
-      }
+      // } else {
+        // skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
+      // }
     }
 
     const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
@@ -76,8 +78,10 @@ namespace {
     // Coverity reports that the callee treats &ring->next as an array.  However, due to the use of
     // FanSymmetric<1>, only the first element is ever accessed, so it's fine.
     // coverity[callee_ptr_arith:FALSE]
+    // Primitives<T, RedOp, FanSymmetric<1>, 0, Proto, 0>
+      // prims(tid, nthreads, &ring->prev, &ring->next, work->sendbuff, work->recvbuff, work->redOpArg);
     Primitives<T, RedOp, FanSymmetric<1>, 0, Proto, 0>
-      prims(tid, nthreads, &ring->prev, &ring->next, work->sendbuff, work->recvbuff, work->redOpArg);
+      prims(tid, nthreads, &ring->next, &ring->prev, work->sendbuff, work->recvbuff, work->redOpArg);
 
     for (size_t elemOffset = 0; elemOffset < channelCount; elemOffset += chunkCount) {
       nelem = min(chunkCount, channelCount - elemOffset);
@@ -86,20 +90,23 @@ namespace {
       /////////////// begin ReduceScatter steps ///////////////
       if (!no_rs){
         // step 0: push data to next GPU
-        rankDest = ringRanks[nranks-(1+skip_rs)];
-        offset = dataOffset + modRanks(rankDest + shift) * count;
+        rankDest = ringRanks[modRanks(nranks-1+shift)];
+        offset = dataOffset + rankDest * count;
         prims.send(offset, nelem);
 
         // k-2 steps: reduce and copy to next GPU
-        for (int j=(2+skip_rs); j<nranks; ++j) {
-          rankDest = ringRanks[nranks-j];
-          offset = dataOffset + modRanks(rankDest + shift) * count;
+        // for (int j = 2; j < nranks-skip_rs; ++j) {
+        for (int j = 0; j < nranks-skip_rs-2; ++j) {
+          // rankDest = ringRanks[modRanks(nranks-j+shift)];
+          rankDest = ringRanks[modRanks(j+shift)];
+          offset = dataOffset + rankDest * count;
           prims.recvReduceSend(offset, nelem);
         }
 
         // step k-1: reduce this buffer and data, which will produce the final result
-        rankDest = ringRanks[0];
-        offset = dataOffset + modRanks(rankDest + shift) * count;
+        // rankDest = ringRanks[modRanks(0+skip_rs+shift)];
+        rankDest = ringRanks[modRanks(nranks-skip_rs-2+shift)];
+        offset = dataOffset + rankDest * count;
         prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
       }
     }

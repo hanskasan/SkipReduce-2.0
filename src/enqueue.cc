@@ -291,6 +291,11 @@ ncclResult_t ncclTasksRegAndEnqueue(struct ncclComm* comm) {
     devWork.oneNode = (comm->nNodes == 1);
     devWork.isOneRPN = comm->isOneRPN;
     devWork.netRegUsed = devWork.regUsed = 0;
+
+    // HANS: Additionals for SkipReduce
+    devWork.shift = task->shift;
+    devWork.skips = task->skips;
+
     if (task->regBufType & NCCL_NET_REG_BUFFER)
       devWork.netRegUsed = 1;
     if (task->regBufType & (NCCL_IPC_REG_BUFFER | NCCL_NVLS_REG_BUFFER))
@@ -2168,6 +2173,10 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
       t->opDev = opDev; // C++ struct assignment
       t->chunkSteps = info->chunkSteps;
       t->sliceSteps = info->sliceSteps;
+
+      // HANS: Additionals for SkipREduce
+      t->shift = info->shift;
+      t->skips = info->skips;
 
       planner->nTasksColl += 1;
       ncclTaskCollSorterInsert(&planner->collSorter, t, t->trafficBytes);

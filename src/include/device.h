@@ -280,6 +280,9 @@ struct alignas(16) ncclDevWorkColl {
     } collnet;
   };
   uint64_t redOpArg;
+  // HANS: Additionals
+  uint8_t shift;
+  uint8_t skips;
 };
 
 
@@ -400,6 +403,8 @@ struct ncclDevComm {
   // HANS: Additionals
   uint8_t min_skip_rs;
   uint8_t max_skip_rs;
+  uint8_t min_skip_ag;
+  uint8_t max_skip_ag;
   uint32_t protect_size_0;
   uint32_t protect_size_1;
   uint32_t protect_size_2;

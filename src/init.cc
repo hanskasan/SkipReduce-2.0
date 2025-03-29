@@ -433,6 +433,8 @@ static ncclResult_t commAlloc(struct ncclComm* comm, struct ncclComm* parent, in
 // HANS: Additional environment variables
 NCCL_PARAM(MinSkipRS, "MIN_SKIP_RS", 0);
 NCCL_PARAM(MaxSkipRS, "MAX_SKIP_RS", 0);
+NCCL_PARAM(MinSkipAG, "MIN_SKIP_AG", 0);
+NCCL_PARAM(MaxSkipAG, "MAX_SKIP_AG", 0);
 NCCL_PARAM(ProtectSize0, "PROTECT_SIZE_0", 0);
 NCCL_PARAM(ProtectSize1, "PROTECT_SIZE_1", 0);
 NCCL_PARAM(ProtectSize2, "PROTECT_SIZE_2", 0);
@@ -473,13 +475,16 @@ static ncclResult_t devCommSetup(ncclComm_t comm) {
   }
   tmpCommAndChans.comm.min_skip_rs = ncclParamMinSkipRS();
   tmpCommAndChans.comm.max_skip_rs = ncclParamMaxSkipRS();
+  tmpCommAndChans.comm.min_skip_ag = ncclParamMinSkipAG();
+  tmpCommAndChans.comm.max_skip_ag = ncclParamMaxSkipAG();
   tmpCommAndChans.comm.protect_size_0 = ncclParamProtectSize0();
   tmpCommAndChans.comm.protect_size_1 = ncclParamProtectSize1();
   tmpCommAndChans.comm.protect_size_2 = ncclParamProtectSize2();
   tmpCommAndChans.comm.protect_size_3 = ncclParamProtectSize3();
   tmpCommAndChans.comm.protect_size_4 = ncclParamProtectSize4();
 
-  printf("Selective random skipping from %d to %d steps, but protect bucket with sizes %d %d %d %d %d\n", tmpCommAndChans.comm.min_skip_rs, tmpCommAndChans.comm.max_skip_rs, tmpCommAndChans.comm.protect_size_0, tmpCommAndChans.comm.protect_size_1, tmpCommAndChans.comm.protect_size_2, tmpCommAndChans.comm.protect_size_3, tmpCommAndChans.comm.protect_size_4);
+  // printf("Selective random skipping from %d to %d RS steps and from %d to %d AG steps, but protect bucket with sizes %d %d %d %d %d\n", tmpCommAndChans.comm.min_skip_rs, tmpCommAndChans.comm.max_skip_rs, tmpCommAndChans.comm.min_skip_ag, tmpCommAndChans.comm.max_skip_ag, tmpCommAndChans.comm.protect_size_0, tmpCommAndChans.comm.protect_size_1, tmpCommAndChans.comm.protect_size_2, tmpCommAndChans.comm.protect_size_3, tmpCommAndChans.comm.protect_size_4);
+  printf("Selective random skipping, make sure NCCL_SHIFT and NCCL_SKIPS are defined!\n");
 
   comm->workArgsBytes = std::min<size_t>(ncclParamWorkArgsBytes(), ncclMaxKernelArgsSize(comm->cudaArch));
 

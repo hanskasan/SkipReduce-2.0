@@ -215,6 +215,10 @@ struct ncclTaskColl {
   // Profiler plugin
   int eActivationMask;
   void* eventHandle;
+
+  // HANS: Additionals
+  uint8_t shift;
+  uint8_t skips;
 };
 struct ncclTaskP2p {
   struct ncclTaskP2p* next;

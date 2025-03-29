@@ -82,9 +82,16 @@ ncclResult_t ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcoun
   NVTX3_FUNC_WITH_PARAMS(AllGather, NcclNvtxParamsAllGather,
     NVTX3_PAYLOAD(comm ? comm->commHash : 0, sendcount * ncclTypeSize(datatype)));
 
+  // HANS: Additionals for SkipReduce
+  const char* temp;
+  temp = ncclGetEnv("NCCL_SHIFT");
+  short shift = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_SKIPS");
+  short skips = std::stoi(temp);
+
   struct ncclInfo info = { ncclFuncAllGather, "AllGather",
     sendbuff, recvbuff, sendcount, datatype, ncclSum, 0, comm, stream, /* Args */
-    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS };
+    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips};
   return ncclEnqueueCheck(&info);
 }
 
@@ -141,9 +148,16 @@ ncclResult_t ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recv
   NVTX3_FUNC_WITH_PARAMS(ReduceScatter, NcclNvtxParamsReduceScatter,
     NVTX3_PAYLOAD(comm ? comm->commHash : 0, recvcount * ncclTypeSize(datatype), op));
 
+  // HANS: Additionals for SkipReduce
+  const char* temp;
+  temp = ncclGetEnv("NCCL_SHIFT");
+  short shift = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_SKIPS");
+  short skips = std::stoi(temp);
+
   struct ncclInfo info = { ncclFuncReduceScatter, "ReduceScatter",
     sendbuff, recvbuff, recvcount, datatype, op, 0, comm, stream, /* Args */
-    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS };
+    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS, shift, skips };
   return ncclEnqueueCheck(&info);
 }
 

@@ -27,14 +27,26 @@ namespace {
     T *inputBuf = (T*)work->sendbuff;
     T *outputBuf = (T*)work->recvbuff;
 
+    // HANS: Additionals for SkipReduce
+    const uint shift = work->shift;
+    uint skip_ag = work->skips;
+
+    // HANS: Additionals
+    // if ((tid == 0) && (blockIdx.x == 0)){
+    //   printf("Shift: %d\n", shift);
+    //   printf("SkipAG: %d\n", skip_ag);
+    // }
+
+    // HANS: For debugging
+    // if ((blockIdx.x == 0) && (tid == 0))
+      // printf("AllGather with size %d\n", count / sizeof(T));
+
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
 
     // HANS: Skipping range
     // const uint8_t min_skip_ag = ncclShmem.comm.min_skip_ag;
     // const uint8_t max_skip_ag = ncclShmem.comm.max_skip_ag;
-    const uint8_t min_skip_ag = ncclShmem.comm.min_skip_rs;
-    const uint8_t max_skip_ag = ncclShmem.comm.max_skip_rs;
 
     // HANS: Randomizer
     const int bid = ncclShmem.channelId - work->channelLo;
@@ -52,23 +64,19 @@ namespace {
     const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
-    // HANS: Decide shift offset for Random SkipReduce
-    // const uint shift = ((int)(random * nranks)) % nranks;
-    const uint shift = 0;
-
-    // HANS: Decide how many steps to skip this iteration
-    uint skip_ag;
+    // HANS: OVERRIDE skip_ag for certain condition
     if (count < min_size){
       skip_ag = 0;
     } else {
-      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
+      // if ((blockIdx.x == 0) && (tid == 0))
+        // printf("TUDU with count %d\n", count / sizeof(T));
+      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4))
         skip_ag = 0;
-      } else {
-        skip_ag =  min_skip_ag + ((int)(random * (max_skip_ag - min_skip_ag + 1)));
-      }
+      // } else {
+        // skip_ag =  min_skip_ag + ((int)(random * (max_skip_ag - min_skip_ag + 1)));
+      // }
     }
 
-    // HANS: Not used for now
     const bool no_ag = (skip_ag >= (nranks - 1)) ? true : false;
 
     // HANS: For shifting (Random SkipReduce)
@@ -99,9 +107,9 @@ namespace {
 
         if (!no_ag){
           // step 0: push data to next GPU
-          rankDest = ringRanks[0];
-          // rankDest = ringRanks[modRanks(nranks-skip_ag)];
-          offset = dataOffset + modRanks(rankDest + shift) * count;
+          rankDest = ringRanks[modRanks(0 + shift)];
+          // rankDest = ringRanks[modRanks(nranks - skip_ag)];
+          offset = dataOffset + rankDest * count;
 
           if ((inputBuf + dataOffset == outputBuf + offset) || isNetOffload) { // In place or onePPN
             prims.directSend(dataOffset, offset, nelem);
@@ -110,14 +118,18 @@ namespace {
           }
 
           // k-2 steps: copy to next GPU
-          for (int j = 1; j < nranks - 1 - skip_ag; ++j) {
-            rankDest = ringRanks[nranks - j];
-            offset = dataOffset + modRanks(rankDest + shift) * count;
+          // for (int j = 1+skip_ag; j < nranks-1; ++j) {
+          for (int j = 1; j < nranks-1-skip_ag; ++j) {
+            rankDest = ringRanks[modRanks(nranks-j+shift)];
+            // rankDest = ringRanks[j];
+            offset = dataOffset + rankDest * count;
             prims.directRecvCopyDirectSend(offset, offset, nelem);
           }
 
           // Make final copy from buffer to dest.
-          rankDest = ringRanks[1+skip_ag];
+          // rankDest = ringRanks[1];
+          rankDest = ringRanks[modRanks(1+skip_ag+shift)];
+          // rankDest = ringRanks[nranks-1-skip_ag];
           offset = dataOffset + rankDest * count;
 
           // Final wait/copy.
