@@ -90,13 +90,15 @@ namespace {
       /////////////// begin ReduceScatter steps ///////////////
       if (!no_rs){
         // step 0: push data to next GPU
-        rankDest = ringRanks[modRanks(nranks-1+shift)];
+        // rankDest = ringRanks[modRanks(nranks-1+shift)];
+        rankDest = ringRanks[modRanks(1+skip_rs+shift)];
         offset = dataOffset + rankDest * count;
         prims.send(offset, nelem);
 
         // k-2 steps: reduce and copy to next GPU
         // for (int j = 2; j < nranks-skip_rs; ++j) {
-        for (int j = 0; j < nranks-skip_rs-2; ++j) {
+        // for (int j = 0; j < nranks-skip_rs-2; ++j) {
+        for (int j = 2+skip_rs; j < nranks; ++j) {
           // rankDest = ringRanks[modRanks(nranks-j+shift)];
           rankDest = ringRanks[modRanks(j+shift)];
           offset = dataOffset + rankDest * count;
@@ -105,7 +107,8 @@ namespace {
 
         // step k-1: reduce this buffer and data, which will produce the final result
         // rankDest = ringRanks[modRanks(0+skip_rs+shift)];
-        rankDest = ringRanks[modRanks(nranks-skip_rs-2+shift)];
+        // rankDest = ringRanks[modRanks(nranks-skip_rs-2+shift)];
+        rankDest = ringRanks[modRanks(0+shift)];
         offset = dataOffset + rankDest * count;
         prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
       }
