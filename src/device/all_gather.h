@@ -28,7 +28,8 @@ namespace {
     T *outputBuf = (T*)work->recvbuff;
 
     // HANS: Additionals for SkipReduce
-    const uint shift = work->shift;
+    // const uint shift = work->shift;
+    uint shift = 1;
     uint skip_ag = work->skips;
 
     // HANS: Additionals
@@ -135,6 +136,13 @@ namespace {
           // Final wait/copy.
           prims.directRecv(offset, offset, nelem);
         }
+
+        // if ((blockIdx.x == 0) && (tid == 0))
+          // printf("Shift: %d\n", shift);
+          // printf("Elem offset: %d\n", elemOffset);
+          // printf("nElem: %d\n", nelem);
+
+        // shift += 1;
       }
     } else if (inputBuf != outputBuf + ringRanks[0] * count) {
       inputBuf = inputBuf + partOffset;

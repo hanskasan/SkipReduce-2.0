@@ -30,12 +30,16 @@ namespace {
     int nelem;
     int chunk;
 
+    // HANS: Additionals for SkipReduce
+    uint shift = work->shift;
+    uint skip_rs = work->skips;
+
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
 
     // HANS: Skipping range
-    const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
-    const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
+    // const uint8_t min_skip_rs = ncclShmem.comm.min_skip_rs;
+    // const uint8_t max_skip_rs = ncclShmem.comm.max_skip_rs;
 
     // HANS: Randomizer
     const uint64_t iteration = ncclShmem.comm.iteration[bid];
@@ -53,18 +57,18 @@ namespace {
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
     // HANS: Decide shift offset for Random SkipReduce
-    const uint shift = ((int)(random * nranks)) % nranks;
+    // const uint shift = ((int)(random * nranks)) % nranks;
 
     // HANS: Decide how many steps to skip this iteration
-    uint skip_rs;
+    // uint skip_rs;
     if (size < min_size){
       skip_rs = 0;
     } else {
-      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4)){
+      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4))
         skip_rs = 0;
-      } else {
-        skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
-      }
+      // } else {
+        // skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
+      // }
     }
 
     const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
@@ -133,6 +137,14 @@ namespace {
       nelem = (int)min(chunkCount, remCount - chunkOffset);
 
       prims.directRecv(offset, offset, nelem);
+
+      if ((blockIdx.x == 0) && (threadIdx.x == 0)){
+        printf("Skips: %d\n", skip_rs);
+        printf("Shift: %d\n", shift);
+        printf("ElemOffset: %d\n", elemOffset);
+      }
+
+      // shift += 1;
     }
   }
 

@@ -55,7 +55,7 @@ namespace {
 
     // HANS: Decide shift offset for Random SkipReduce
     // const uint shift = ((int)(random * nranks)) % nranks;
-    const uint shift = 0;
+    uint shift = 0;
 
     // HANS: Decide how many steps to skip this iteration
     if (count < min_size){
@@ -112,6 +112,14 @@ namespace {
         offset = dataOffset + rankDest * count;
         prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
       }
+
+      if ((blockIdx.x == 0) && (tid == 0)){
+          printf("Skips: %d\n", skip_rs);
+          printf("Shift: %d\n", shift);
+          printf("nElem: %d\n", nelem);
+      }
+
+      // shift += 1;
     }
   }
 }

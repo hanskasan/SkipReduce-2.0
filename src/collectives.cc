@@ -91,7 +91,7 @@ ncclResult_t ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcoun
 
   struct ncclInfo info = { ncclFuncAllGather, "AllGather",
     sendbuff, recvbuff, sendcount, datatype, ncclSum, 0, comm, stream, /* Args */
-    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips};
+    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips };
   return ncclEnqueueCheck(&info);
 }
 
@@ -102,9 +102,16 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
   NVTX3_FUNC_WITH_PARAMS(AllReduce, NcclNvtxParamsAllReduce,
     NVTX3_PAYLOAD(comm ? comm->commHash : 0, count * ncclTypeSize(datatype), op));
 
+    // HANS: Additionals for SkipReduce
+  const char* temp;
+  temp = ncclGetEnv("NCCL_SHIFT");
+  short shift = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_SKIPS");
+  short skips = std::stoi(temp);
+
   struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
     sendbuff, recvbuff, count, datatype, op, 0, comm, stream, /* Args */
-    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS };
+    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips };
   return ncclEnqueueCheck(&info);
 }
 
