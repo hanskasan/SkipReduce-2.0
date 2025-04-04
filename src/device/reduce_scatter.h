@@ -28,7 +28,9 @@ namespace {
     int rankDest;
 
     // HANS: Additionals for SkipReduce
-    uint skip_rs = work->skips;
+    uint skip_rs;
+    uint chunk_idx = 0;
+    bool no_rs;
 
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
@@ -39,14 +41,11 @@ namespace {
 
     // HANS: Randomizer
     const int bid = ncclShmem.channelId - work->channelLo;
-    const uint64_t iteration = ncclShmem.comm.iteration[bid];
-    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
-
     curandState s;
-    curand_init(seed, 0, 0, &s);
-    float random = curand_uniform(&s);
+    unsigned long long seed;
+    float random;
 
-    // HANS: Define what to protect
+    // HANS: Define what to protect 
     const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
     const uint64_t protect_size_1 = ncclShmem.comm.protect_size_1;
     const uint64_t protect_size_2 = ncclShmem.comm.protect_size_2;
@@ -54,21 +53,7 @@ namespace {
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
     // HANS: Decide shift offset for Random SkipReduce
-    // const uint shift = ((int)(random * nranks)) % nranks;
-    uint shift = 0;
-
-    // HANS: Decide how many steps to skip this iteration
-    if (count < min_size){
-      skip_rs = 0;
-    } else {
-      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4))
-        skip_rs = 0;
-      // } else {
-        // skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
-      // }
-    }
-
-    const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
+    uint shift = 0; // HANS: Shift does not seem to work here..
 
     // HANS: For shifting (Random SkipReduce)
     auto modRanks = [&]__device__(int r)->int {
@@ -84,9 +69,37 @@ namespace {
       prims(tid, nthreads, &ring->next, &ring->prev, work->sendbuff, work->recvbuff, work->redOpArg);
 
     for (size_t elemOffset = 0; elemOffset < channelCount; elemOffset += chunkCount) {
-      nelem = min(chunkCount, channelCount - elemOffset);
 
+      nelem = min(chunkCount, channelCount - elemOffset);
       dataOffset = gridOffset + elemOffset;
+
+      // HANS: Decide how many steps to skip this iteration
+      if (count < min_size){
+        skip_rs = 0;
+      } else {
+        if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
+          skip_rs = 0;
+        } else {
+          if ((work->skips == 0) || (work->skips == (nranks - 1))){
+            skip_rs = work->skips;
+          } else {
+            // HANS: Randomizer
+            seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+            curand_init(seed, 0, 0, &s);
+            random = curand_uniform(&s);
+
+            if (random < 0.25)
+              skip_rs = work->skips - 1;
+            else if (random > 0.75)
+              skip_rs = work->skips + 1;
+            else
+              skip_rs = work->skips;
+          }
+        }
+      }
+
+      no_rs = (skip_rs >= (nranks - 1)) ? true : false;
+
       /////////////// begin ReduceScatter steps ///////////////
       if (!no_rs){
         // step 0: push data to next GPU
@@ -113,13 +126,16 @@ namespace {
         prims.recvReduceCopy(offset, dataOffset, nelem, /*postOp=*/true);
       }
 
-      if ((blockIdx.x == 0) && (tid == 0)){
-          printf("Skips: %d\n", skip_rs);
-          printf("Shift: %d\n", shift);
-          printf("nElem: %d\n", nelem);
-      }
+      // HANS: Debugging message
+      // if ((blockIdx.x == 0) && (tid == 0)){
+          // printf("Skips: %d\n", skip_rs);
+          // printf("Shift: %d\n", shift);
+          // printf("nElem: %d\n", nelem);
+          // printf("Random: %f\n", random);
+      // }
 
-      // shift += 1;
+      // HANS: Increment index
+      chunk_idx += work->chunk_inc;
     }
   }
 }

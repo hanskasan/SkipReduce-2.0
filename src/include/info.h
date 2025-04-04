@@ -31,6 +31,8 @@ struct ncclInfo {
   // HANS: Additionals for SkipReduce
   int shift;
   int skips; // Number of Reduce-Scatter and All-Gather steps to be skipped. For AllReduce, only the Reduce-Scatter stage is skipped.
+  uint random_id;
+  int chunk_inc;
 };
 
 #endif

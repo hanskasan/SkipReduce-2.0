@@ -2,3 +2,7 @@
 /build
 *.gcov
 /coverage/
+*.ddeb
+*.build
+*.buildinfo
+*.changes

@@ -138,11 +138,11 @@ namespace {
 
       prims.directRecv(offset, offset, nelem);
 
-      if ((blockIdx.x == 0) && (threadIdx.x == 0)){
-        printf("Skips: %d\n", skip_rs);
-        printf("Shift: %d\n", shift);
-        printf("ElemOffset: %d\n", elemOffset);
-      }
+      // if ((blockIdx.x == 0) && (threadIdx.x == 0)){
+        // printf("Skips: %d\n", skip_rs);
+        // printf("Shift: %d\n", shift);
+        // printf("ElemOffset: %d\n", elemOffset);
+      // }
 
       // shift += 1;
     }

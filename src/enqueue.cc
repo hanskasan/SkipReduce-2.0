@@ -295,6 +295,8 @@ ncclResult_t ncclTasksRegAndEnqueue(struct ncclComm* comm) {
     // HANS: Additionals for SkipReduce
     devWork.shift = task->shift;
     devWork.skips = task->skips;
+    devWork.random_id = task->random_id;
+    devWork.chunk_inc = task->chunk_inc;
 
     if (task->regBufType & NCCL_NET_REG_BUFFER)
       devWork.netRegUsed = 1;
@@ -2177,6 +2179,8 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
       // HANS: Additionals for SkipREduce
       t->shift = info->shift;
       t->skips = info->skips;
+      t->random_id = info->random_id;
+      t->chunk_inc = info->chunk_inc;
 
       planner->nTasksColl += 1;
       ncclTaskCollSorterInsert(&planner->collSorter, t, t->trafficBytes);

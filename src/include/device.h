@@ -283,6 +283,8 @@ struct alignas(16) ncclDevWorkColl {
   // HANS: Additionals
   uint8_t shift;
   uint8_t skips;
+  uint random_id;
+  uint8_t chunk_inc;
 };
 
 

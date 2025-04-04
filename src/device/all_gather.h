@@ -28,19 +28,9 @@ namespace {
     T *outputBuf = (T*)work->recvbuff;
 
     // HANS: Additionals for SkipReduce
-    // const uint shift = work->shift;
-    uint shift = 1;
-    uint skip_ag = work->skips;
-
-    // HANS: Additionals
-    // if ((tid == 0) && (blockIdx.x == 0)){
-    //   printf("Shift: %d\n", shift);
-    //   printf("SkipAG: %d\n", skip_ag);
-    // }
-
-    // HANS: For debugging
-    // if ((blockIdx.x == 0) && (tid == 0))
-      // printf("AllGather with size %d\n", count / sizeof(T));
+    uint skip_ag;
+    uint chunk_idx = 0;
+    bool no_ag;
 
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
@@ -51,12 +41,9 @@ namespace {
 
     // HANS: Randomizer
     const int bid = ncclShmem.channelId - work->channelLo;
-    const uint64_t iteration = ncclShmem.comm.iteration[bid];
-    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
-
     curandState s;
-    curand_init(seed, 0, 0, &s);
-    float random = curand_uniform(&s);
+    unsigned long long seed;
+    float random;
 
     // HANS: Define what to protect
     const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
@@ -65,20 +52,8 @@ namespace {
     const uint64_t protect_size_3 = ncclShmem.comm.protect_size_3;
     const uint64_t protect_size_4 = ncclShmem.comm.protect_size_4;
 
-    // HANS: OVERRIDE skip_ag for certain condition
-    if (count < min_size){
-      skip_ag = 0;
-    } else {
-      // if ((blockIdx.x == 0) && (tid == 0))
-        // printf("TUDU with count %d\n", count / sizeof(T));
-      if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4))
-        skip_ag = 0;
-      // } else {
-        // skip_ag =  min_skip_ag + ((int)(random * (max_skip_ag - min_skip_ag + 1)));
-      // }
-    }
-
-    const bool no_ag = (skip_ag >= (nranks - 1)) ? true : false;
+    // HANS: Decide shift offset for Random SkipReduce
+    uint shift = 0; // HANS: Shift does not seem to work here..
 
     // HANS: For shifting (Random SkipReduce)
     auto modRanks = [&]__device__(int r)->int {
@@ -106,6 +81,33 @@ namespace {
         nelem = min(chunkCount, partCount - elemOffset);
         dataOffset = partOffset + elemOffset;
 
+        // HANS: Decide how many steps to skip this iteration
+        if (count < min_size){
+          skip_ag = 0;
+        } else {
+          if ((count == protect_size_0) || (count == protect_size_1) || (count == protect_size_2) || (count == protect_size_3) ||(count == protect_size_4)){
+            skip_ag = 0;
+          } else {
+            if ((work->skips == 0) || (work->skips == (nranks - 1))){
+              skip_ag = work->skips;
+            } else {
+              // HANS: Randomizer
+              seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+              curand_init(seed, 0, 0, &s);
+              random = curand_uniform(&s);
+
+              if (random < 0.25)
+                skip_ag = work->skips - 1;
+              else if (random > 0.75)
+                skip_ag = work->skips + 1;
+              else
+                skip_ag = work->skips;
+            }
+          }
+        }
+
+        no_ag = (skip_ag >= (nranks - 1)) ? true : false;
+
         if (!no_ag){
           // step 0: push data to next GPU
           rankDest = ringRanks[modRanks(0 + shift)];
@@ -119,30 +121,29 @@ namespace {
           }
 
           // k-2 steps: copy to next GPU
-          // for (int j = 1+skip_ag; j < nranks-1; ++j) {
           for (int j = 1; j < nranks-1-skip_ag; ++j) {
             rankDest = ringRanks[modRanks(nranks-j+shift)];
-            // rankDest = ringRanks[j];
             offset = dataOffset + rankDest * count;
             prims.directRecvCopyDirectSend(offset, offset, nelem);
           }
 
           // Make final copy from buffer to dest.
-          // rankDest = ringRanks[1];
           rankDest = ringRanks[modRanks(1+skip_ag+shift)];
-          // rankDest = ringRanks[nranks-1-skip_ag];
           offset = dataOffset + rankDest * count;
 
           // Final wait/copy.
           prims.directRecv(offset, offset, nelem);
         }
 
-        // if ((blockIdx.x == 0) && (tid == 0))
+        // if ((blockIdx.x == 0) && (tid == 0)){
           // printf("Shift: %d\n", shift);
           // printf("Elem offset: %d\n", elemOffset);
           // printf("nElem: %d\n", nelem);
+          // printf("Random: %f\n", random);
+        // }
 
-        // shift += 1;
+        // HANS: Increment index
+        chunk_idx += work->chunk_inc;
       }
     } else if (inputBuf != outputBuf + ringRanks[0] * count) {
       inputBuf = inputBuf + partOffset;

@@ -219,6 +219,8 @@ struct ncclTaskColl {
   // HANS: Additionals
   uint8_t shift;
   uint8_t skips;
+  uint random_id;
+  uint chunk_inc;
 };
 struct ncclTaskP2p {
   struct ncclTaskP2p* next;

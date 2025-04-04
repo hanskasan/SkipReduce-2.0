@@ -88,10 +88,14 @@ ncclResult_t ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcoun
   short shift = std::stoi(temp);
   temp = ncclGetEnv("NCCL_SKIPS");
   short skips = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_CHUNK_INC");
+  short chunk_inc = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_RANDOM_ID");
+  uint random_id = static_cast<unsigned int>(std::stoul(temp));
 
   struct ncclInfo info = { ncclFuncAllGather, "AllGather",
     sendbuff, recvbuff, sendcount, datatype, ncclSum, 0, comm, stream, /* Args */
-    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips };
+    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips, random_id, chunk_inc };
   return ncclEnqueueCheck(&info);
 }
 
@@ -161,10 +165,14 @@ ncclResult_t ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recv
   short shift = std::stoi(temp);
   temp = ncclGetEnv("NCCL_SKIPS");
   short skips = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_CHUNK_INC");
+  short chunk_inc = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_RANDOM_ID");
+  uint random_id = static_cast<unsigned int>(std::stoul(temp));
 
   struct ncclInfo info = { ncclFuncReduceScatter, "ReduceScatter",
     sendbuff, recvbuff, recvcount, datatype, op, 0, comm, stream, /* Args */
-    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS, shift, skips };
+    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS, shift, skips, random_id, chunk_inc };
   return ncclEnqueueCheck(&info);
 }
 
