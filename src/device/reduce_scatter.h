@@ -83,17 +83,21 @@ namespace {
           if ((work->skips == 0) || (work->skips == (nranks - 1))){
             skip_rs = work->skips;
           } else {
-            // HANS: Randomizer
-            seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
-            curand_init(seed, 0, 0, &s);
-            random = curand_uniform(&s);
-
-            if (random < 0.25)
-              skip_rs = work->skips - 1;
-            else if (random > 0.75)
-              skip_rs = work->skips + 1;
-            else
+            if (work->is_fixed_skip){
               skip_rs = work->skips;
+            } else {
+              // HANS: Randomizer
+              seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+              curand_init(seed, 0, 0, &s);
+              random = curand_uniform(&s);
+
+              if (random < 0.33)
+                skip_rs = work->skips - 1;
+              else if (random < 0.66)
+                skip_rs = work->skips + 1;
+              else
+                skip_rs = work->skips;
+            }
           }
         }
       }
@@ -127,12 +131,12 @@ namespace {
       }
 
       // HANS: Debugging message
-      // if ((blockIdx.x == 0) && (tid == 0)){
-          // printf("Skips: %d\n", skip_rs);
+      if ((blockIdx.x == 0) && (tid == 0)){
+          printf("Skips: %d\n", skip_rs);
           // printf("Shift: %d\n", shift);
           // printf("nElem: %d\n", nelem);
           // printf("Random: %f\n", random);
-      // }
+      }
 
       // HANS: Increment index
       chunk_idx += work->chunk_inc;

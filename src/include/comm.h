@@ -221,6 +221,7 @@ struct ncclTaskColl {
   uint8_t skips;
   uint random_id;
   uint chunk_inc;
+  bool is_fixed_skip;
 };
 struct ncclTaskP2p {
   struct ncclTaskP2p* next;

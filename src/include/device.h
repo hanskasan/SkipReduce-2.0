@@ -285,6 +285,7 @@ struct alignas(16) ncclDevWorkColl {
   uint8_t skips;
   uint random_id;
   uint8_t chunk_inc;
+  bool is_fixed_skip;
 };
 
 

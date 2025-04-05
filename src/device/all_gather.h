@@ -92,16 +92,20 @@ namespace {
               skip_ag = work->skips;
             } else {
               // HANS: Randomizer
-              seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
-              curand_init(seed, 0, 0, &s);
-              random = curand_uniform(&s);
-
-              if (random < 0.25)
-                skip_ag = work->skips - 1;
-              else if (random > 0.75)
-                skip_ag = work->skips + 1;
-              else
+              if (work->is_fixed_skip){
                 skip_ag = work->skips;
+              } else {
+                seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+                curand_init(seed, 0, 0, &s);
+                random = curand_uniform(&s);
+
+                if (random < 0.33)
+                  skip_ag = work->skips - 1;
+                else if (random < 0.66)
+                  skip_ag = work->skips + 1;
+                else
+                  skip_ag = work->skips;
+              }
             }
           }
         }

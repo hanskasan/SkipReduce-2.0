@@ -297,6 +297,7 @@ ncclResult_t ncclTasksRegAndEnqueue(struct ncclComm* comm) {
     devWork.skips = task->skips;
     devWork.random_id = task->random_id;
     devWork.chunk_inc = task->chunk_inc;
+    devWork.is_fixed_skip = task->is_fixed_skip;
 
     if (task->regBufType & NCCL_NET_REG_BUFFER)
       devWork.netRegUsed = 1;
@@ -2181,6 +2182,7 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
       t->skips = info->skips;
       t->random_id = info->random_id;
       t->chunk_inc = info->chunk_inc;
+      t->is_fixed_skip = info->is_fixed_skip;
 
       planner->nTasksColl += 1;
       ncclTaskCollSorterInsert(&planner->collSorter, t, t->trafficBytes);
