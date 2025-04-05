@@ -131,12 +131,12 @@ namespace {
       }
 
       // HANS: Debugging message
-      if ((blockIdx.x == 0) && (tid == 0)){
-          printf("Skips: %d\n", skip_rs);
+      // if ((blockIdx.x == 0) && (tid == 0)){
+          // printf("Skips: %d\n", skip_rs);
           // printf("Shift: %d\n", shift);
           // printf("nElem: %d\n", nelem);
           // printf("Random: %f\n", random);
-      }
+      // }
 
       // HANS: Increment index
       chunk_idx += work->chunk_inc;
