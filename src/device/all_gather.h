@@ -95,7 +95,8 @@ namespace {
               if (work->is_fixed_skip){
                 skip_ag = work->skips;
               } else {
-                seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+                // seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+                seed = (1 + chunk_idx) * work->random_id; // +1 to prevent bid==0 to always possess seed 0
                 curand_init(seed, 0, 0, &s);
                 random = curand_uniform(&s);
 

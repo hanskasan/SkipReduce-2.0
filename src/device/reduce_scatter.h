@@ -87,7 +87,8 @@ namespace {
               skip_rs = work->skips;
             } else {
               // HANS: Randomizer
-              seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+              // seed = (bid + 1 + chunk_idx) * (work->random_id + 1); // +1 to prevent bid==0 to always possess seed 0
+              seed = (1 + chunk_idx) * work->random_id; // +1 to prevent bid==0 to always possess seed 0
               curand_init(seed, 0, 0, &s);
               random = curand_uniform(&s);
 
