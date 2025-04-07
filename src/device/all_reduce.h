@@ -31,8 +31,10 @@ namespace {
     int chunk;
 
     // HANS: Additionals for SkipReduce
-    uint shift = work->shift;
+    // uint shift = work->shift;
+    uint shift;
     uint skip_rs = work->skips;
+    uint chunk_idx = 0;
 
     // HANS: Simple hack not to drop control signal
     const ssize_t min_size = 100000;
@@ -47,7 +49,7 @@ namespace {
 
     curandState s;
     curand_init(seed, 0, 0, &s);
-    float random = curand_uniform(&s);
+    float random;
 
     // HANS: Define what to protect
     const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
@@ -88,6 +90,16 @@ namespace {
       auto modRanks = [&]__device__(int r)->int {
         return r - (r >= nranks ? nranks : 0);
       };
+
+      // HANS: Decide how we should shift
+      if (work->shift == 0){
+        shift = 0;
+      } else {
+        seed = (bid + chunk_idx + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+        curand_init(seed, 0, 0, &s);
+        random = curand_uniform(&s);
+        shift = ((int)(random * nranks)) % nranks;
+      }
 
       // HANS: Shifting (Random SkipReduce)
       ringIx = modRanks(ringIx + shift);
@@ -144,7 +156,8 @@ namespace {
         // printf("ElemOffset: %d\n", elemOffset);
       // }
 
-      // shift += 1;
+      // HANS: Increment index
+      chunk_idx += work->chunk_inc;
     }
   }
 
