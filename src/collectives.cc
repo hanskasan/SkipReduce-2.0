@@ -114,10 +114,14 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
   short shift = std::stoi(temp);
   temp = ncclGetEnv("NCCL_SKIPS");
   short skips = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_CHUNK_INC");
+  short chunk_inc = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_RANDOM_ID");
+  uint random_id = static_cast<unsigned int>(std::stoul(temp));
 
   struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
     sendbuff, recvbuff, count, datatype, op, 0, comm, stream, /* Args */
-    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips };
+    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips, random_id, chunk_inc};
   return ncclEnqueueCheck(&info);
 }
 
