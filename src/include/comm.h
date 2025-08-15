@@ -217,7 +217,7 @@ struct ncclTaskColl {
   void* eventHandle;
 
   // HANS: Additionals
-  uint8_t shift;
+  uint8_t iter;
   uint8_t skips;
   uint random_id;
   uint chunk_inc;

@@ -45,11 +45,13 @@ namespace {
 
     // HANS: Randomizer
     const uint64_t iteration = ncclShmem.comm.iteration[bid];
-    unsigned long long seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
 
     curandState s;
-    curand_init(seed, 0, 0, &s);
     float random;
+    unsigned long long seed;
+    // seed = (bid + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+    // curand_init(seed, 0, 0, &s);
+
 
     // HANS: Define what to protect
     const uint64_t protect_size_0 = ncclShmem.comm.protect_size_0;
@@ -92,14 +94,19 @@ namespace {
       };
 
       // HANS: Decide how we should shift
-      if (work->shift == 0){
-        shift = 0;
-      } else {
-        seed = (bid + chunk_idx + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
-        curand_init(seed, 0, 0, &s);
-        random = curand_uniform(&s);
-        shift = ((int)(random * nranks)) % nranks;
-      }
+      // if (work->shift == 0){
+      //   shift = 0;
+      // } else {
+      //   seed = (bid + chunk_idx + 1) * (int)(iteration); // +1 to prevent bid==0 to always possess seed 0
+      //   curand_init(seed, 0, 0, &s);
+      //   random = curand_uniform(&s);
+      //   shift = ((int)(random * nranks)) % nranks;
+      // }
+
+      seed = (bid + chunk_idx + 1) * (int)(work->iter); // +1 to prevent bid==0 to always possess seed 0
+      curand_init(seed, 0, 0, &s);
+      random = curand_uniform(&s);
+      shift = ((int)(random * nranks)) % nranks;
 
       // HANS: Shifting (Random SkipReduce)
       ringIx = modRanks(ringIx + shift);

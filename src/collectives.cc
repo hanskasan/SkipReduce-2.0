@@ -110,8 +110,8 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
 
     // HANS: Additionals for SkipReduce
   const char* temp;
-  temp = ncclGetEnv("NCCL_SHIFT");
-  short shift = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_ITERATION");
+  short iter = std::stoi(temp);
   temp = ncclGetEnv("NCCL_SKIPS");
   short skips = std::stoi(temp);
   temp = ncclGetEnv("NCCL_CHUNK_INC");
@@ -121,7 +121,7 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
 
   struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
     sendbuff, recvbuff, count, datatype, op, 0, comm, stream, /* Args */
-    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips, random_id, chunk_inc};
+    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, iter, skips, random_id, chunk_inc};
   return ncclEnqueueCheck(&info);
 }
 
