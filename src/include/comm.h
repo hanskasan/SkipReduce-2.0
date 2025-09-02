@@ -219,6 +219,7 @@ struct ncclTaskColl {
   // HANS: Additionals
   uint8_t shift;
   uint8_t skips;
+  uint8_t skips_ag;
   uint random_id;
   uint chunk_inc;
   bool is_fixed_skip;

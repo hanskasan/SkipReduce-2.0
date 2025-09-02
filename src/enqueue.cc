@@ -295,6 +295,7 @@ ncclResult_t ncclTasksRegAndEnqueue(struct ncclComm* comm) {
     // HANS: Additionals for SkipReduce
     devWork.shift = task->shift;
     devWork.skips = task->skips;
+    devWork.skips_ag  = task->skips_ag;
     devWork.random_id = task->random_id;
     devWork.chunk_inc = task->chunk_inc;
     devWork.is_fixed_skip = task->is_fixed_skip;
@@ -2180,6 +2181,7 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
       // HANS: Additionals for SkipREduce
       t->shift = info->shift;
       t->skips = info->skips;
+      t->skips_ag  = info->skips_ag;
       t->random_id = info->random_id;
       t->chunk_inc = info->chunk_inc;
       t->is_fixed_skip = info->is_fixed_skip;

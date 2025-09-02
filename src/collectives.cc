@@ -97,7 +97,7 @@ ncclResult_t ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcoun
 
   struct ncclInfo info = { ncclFuncAllGather, "AllGather",
     sendbuff, recvbuff, sendcount, datatype, ncclSum, 0, comm, stream, /* Args */
-    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips, random_id, chunk_inc, is_fixed_skip };
+    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS, shift, skips, 0, random_id, chunk_inc, is_fixed_skip };
   return ncclEnqueueCheck(&info);
 }
 
@@ -114,6 +114,8 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
   short shift = std::stoi(temp);
   temp = ncclGetEnv("NCCL_SKIPS");
   short skips = std::stoi(temp);
+  temp = ncclGetEnv("NCCL_SKIPS_AG");
+  short skips_ag = std::stoi(temp);
   temp = ncclGetEnv("NCCL_CHUNK_INC");
   short chunk_inc = std::stoi(temp);
   temp = ncclGetEnv("NCCL_RANDOM_ID");
@@ -121,7 +123,7 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
 
   struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
     sendbuff, recvbuff, count, datatype, op, 0, comm, stream, /* Args */
-    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips, random_id, chunk_inc};
+    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS, shift, skips, skips_ag, random_id, chunk_inc};
   return ncclEnqueueCheck(&info);
 }
 
@@ -180,7 +182,7 @@ ncclResult_t ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recv
 
   struct ncclInfo info = { ncclFuncReduceScatter, "ReduceScatter",
     sendbuff, recvbuff, recvcount, datatype, op, 0, comm, stream, /* Args */
-    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS, shift, skips, random_id, chunk_inc, is_fixed_skip };
+    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS, shift, skips, 0, random_id, chunk_inc, is_fixed_skip };
   return ncclEnqueueCheck(&info);
 }
 

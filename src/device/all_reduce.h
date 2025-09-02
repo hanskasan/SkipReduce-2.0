@@ -34,6 +34,7 @@ namespace {
     // uint shift = work->shift;
     uint shift;
     uint skip_rs = work->skips;
+    uint skip_ag = work->skips_ag;
     uint chunk_idx = 0;
 
     // HANS: Simple hack not to drop control signal
@@ -62,18 +63,21 @@ namespace {
     // const uint shift = ((int)(random * nranks)) % nranks;
 
     // HANS: Decide how many steps to skip this iteration
-    // uint skip_rs;
     if (size < min_size){
       skip_rs = 0;
+      skip_ag = 0;
     } else {
-      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4))
+      if ((size == protect_size_0) || (size == protect_size_1) || (size == protect_size_2) || (size == protect_size_3) ||(size == protect_size_4)){
         skip_rs = 0;
+        skip_ag = 0;
+      }
       // } else {
         // skip_rs =  min_skip_rs + ((int)(random * (max_skip_rs - min_skip_rs + 1)));
       // }
     }
 
     const bool no_rs = (skip_rs >= (nranks - 1)) ? true : false;
+    const bool no_ag = (skip_ag >= (nranks - 1)) ? true : false;
     
     // Coverity reports that the callee treats &ring->next as an array.  However, due to the use of
     // FanSymmetric<1>, only the first element is ever accessed, so it's fine.
@@ -134,7 +138,7 @@ namespace {
         prims.directRecvReduceCopyDirectSend(offset, offset, nelem, /*postOp=*/true);
 
       // k-2 steps: copy to next GPU
-      for (int j = 1; j < nranks - 1; ++j) {
+      for (int j = 1; j < nranks - 1 - skip_ag; ++j) {
         chunk = modRanks(ringIx + nranks - j);
         chunkOffset = chunk * chunkCount;
         offset = gridOffset + elemOffset + chunkOffset;
@@ -143,7 +147,7 @@ namespace {
       }
 
       // Make final copy from buffer to dest.
-      chunk = modRanks(ringIx + 1);
+      chunk = modRanks(ringIx + 1 + skip_ag);
       chunkOffset = chunk * chunkCount;
       offset = gridOffset + elemOffset + chunkOffset;
       nelem = (int)min(chunkCount, remCount - chunkOffset);
