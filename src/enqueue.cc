@@ -293,7 +293,7 @@ ncclResult_t ncclTasksRegAndEnqueue(struct ncclComm* comm) {
     devWork.netRegUsed = devWork.regUsed = 0;
 
     // HANS: Additionals for SkipReduce
-    devWork.shift = task->shift;
+    devWork.iter  = task->iter;
     devWork.skips = task->skips;
     devWork.random_id = task->random_id;
     devWork.chunk_inc = task->chunk_inc;
@@ -2178,7 +2178,7 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
       t->sliceSteps = info->sliceSteps;
 
       // HANS: Additionals for SkipREduce
-      t->shift = info->shift;
+      t->iter  = info->iter;
       t->skips = info->skips;
       t->random_id = info->random_id;
       t->chunk_inc = info->chunk_inc;

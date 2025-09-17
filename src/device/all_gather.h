@@ -129,7 +129,7 @@ namespace {
           for (int j = 1; j < nranks-1-skip_ag; ++j) {
             rankDest = ringRanks[modRanks(nranks-j+shift)];
             offset = dataOffset + rankDest * count;
-            prims.directRecvCopyDirectSend(offset, offset, nelem);
+            prims.directRecvCopyDirectSend(offset, offset, nelem, false);
           }
 
           // Make final copy from buffer to dest.
@@ -141,6 +141,7 @@ namespace {
         }
 
         // if ((blockIdx.x == 0) && (tid == 0)){
+          // printf("Skip_RS: %d\n", skip_ag);
           // printf("Shift: %d\n", shift);
           // printf("Elem offset: %d\n", elemOffset);
           // printf("nElem: %d\n", nelem);

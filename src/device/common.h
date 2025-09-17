@@ -329,13 +329,16 @@ __device__ __forceinline__ void ncclKernelMain(struct ncclDevKernelArgs const* a
   }
 
   // HANS: Increment counter
-  if (tid == 0){
-    ncclShmem.comm.iteration[blockIdx.x] += 1;
-  }
+  // if (tid == 0){
+    // ncclShmem.comm.iteration[blockIdx.x] += 1;
+  // }
 
   __syncthreads(); // publish ncclShmem.{args, channelId}
   /* set abort flag to 0 */
   if (tid == 0) ncclShmem.aborted = 0;
+
+  // HANS: Increment counter
+  // if (tid == 0) ncclShmem.comm.iteration[blockIdx.x] += 1;
 
   // Use first 2 warps to load comm and channel, and reamaining load work batch.
   switch (tid/WARP_SIZE) {
